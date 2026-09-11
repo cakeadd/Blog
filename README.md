@@ -55,7 +55,7 @@ Blog/
 ### 1. 获取项目并进入目录
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/cakeadd/Blog.git
 cd Blog
 ```
 
@@ -119,20 +119,3 @@ python manage.py test
 cd frontend
 npm run build
 ```
-
-## Git 提交说明
-
-以下内容属于本地开发数据，不应提交到仓库：
-
-- Python 虚拟环境
-- SQLite 数据库
-- 用户上传的头像文件
-- 前端依赖和构建产物
-- 本地环境变量文件
-- 本地开发计划和进度文件
-
-对应规则已写入 `.gitignore`。公开仓库中只提交源代码、迁移文件、依赖清单和 `.env.example`，不要提交真实密码、JWT 密钥或用户数据。
-
-## 当前项目范围
-
-本项目是本地开发和功能演示用的 MVP，暂不包含生产部署、域名、HTTPS、云数据库、对象存储和 CI/CD 配置。
