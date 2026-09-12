@@ -17,7 +17,7 @@ class Comment(models.Model):
         related_name='comments',
         verbose_name='作者',
     )
-    content = models.TextField('评论内容')
+    content = models.TextField('评论内容', max_length=500)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     is_deleted = models.BooleanField('是否已删除', default=False)
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -20,6 +20,7 @@ const commentContent = ref('')
 const commentSaving = ref(false)
 const deleteCommentTarget = ref(null)
 const deleteCommentSaving = ref(false)
+const openCommentMenuId = ref(null)
 
 const renderedContent = computed(() => {
   const markdown = article.value?.content?.body || ''
@@ -80,12 +81,24 @@ function openCommentModal() {
   commentModal.value = true
 }
 
+function toggleCommentMenu(commentId) {
+  openCommentMenuId.value = openCommentMenuId.value === commentId ? null : commentId
+}
+
 function closeCommentModal() {
   if (commentSaving.value) return
   commentModal.value = false
 }
 
 async function publishComment() {
+  if (!commentContent.value.trim()) {
+    commentsError.value = '评论内容不能为空。'
+    return
+  }
+  if (commentContent.value.length > 500) {
+    commentsError.value = '评论内容不能超过500字。'
+    return
+  }
   commentSaving.value = true
   commentsError.value = ''
   try {
@@ -106,6 +119,7 @@ async function publishComment() {
 
 function openDeleteComment(comment) {
   if (currentUser.value?.id !== comment.author) return
+  openCommentMenuId.value = null
   deleteCommentTarget.value = comment
 }
 
@@ -132,7 +146,14 @@ async function deleteComment() {
   }
 }
 
+function handleDocumentClick(event) {
+  if (!event.target.closest('.comment-actions')) {
+    openCommentMenuId.value = null
+  }
+}
+
 onMounted(async () => {
+  document.addEventListener('click', handleDocumentClick)
   try {
     const response = await apiFetch(`/api/articles/${route.params.id}/`)
     article.value = await parseApiResponse(response)
@@ -143,6 +164,10 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
 })
 </script>
 
@@ -203,11 +228,28 @@ onMounted(async () => {
           v-for="comment in comments"
           :key="comment.id"
           class="comment-item"
-          @contextmenu.prevent="openDeleteComment(comment)"
         >
-          <div class="comment-meta">
-            <router-link :to="userPath(comment.author)">{{ comment.author_name }}</router-link>
-            <span>{{ formatDate(comment.created_at) }}</span>
+          <div class="comment-header">
+            <div class="comment-meta">
+              <router-link :to="userPath(comment.author)">{{ comment.author_name }}</router-link>
+              <span>{{ formatDate(comment.created_at) }}</span>
+            </div>
+            <div v-if="currentUser?.id === comment.author" class="comment-actions" @click.stop>
+              <button
+                type="button"
+                class="comment-menu-button"
+                aria-label="评论操作"
+                :aria-expanded="openCommentMenuId === comment.id"
+                @click="toggleCommentMenu(comment.id)"
+              >
+                <span aria-hidden="true">⋮</span>
+              </button>
+              <div v-if="openCommentMenuId === comment.id" class="comment-menu-dropdown">
+                <button type="button" class="comment-menu-item" @click="openDeleteComment(comment)">
+                  删除
+                </button>
+              </div>
+            </div>
           </div>
           <div class="comment-content">{{ comment.content }}</div>
         </div>
@@ -229,8 +271,10 @@ onMounted(async () => {
             v-model="commentContent"
             class="form-control"
             rows="5"
+            maxlength="500"
             required
           ></textarea>
+          <div class="text-end text-secondary small mt-1">{{ commentContent.length }}/500</div>
         </div>
         <div class="modal-footer-custom">
           <button type="button" class="btn btn-outline-secondary" :disabled="commentSaving" @click="closeCommentModal">
@@ -324,6 +368,61 @@ onMounted(async () => {
   margin-bottom: 0.5rem;
   color: #6c757d;
   font-size: 0.875rem;
+}
+
+.comment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.comment-actions {
+  position: relative;
+}
+
+.comment-menu-button {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #6c757d;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.comment-menu-button:hover,
+.comment-menu-button:focus-visible {
+  color: #212529;
+}
+
+.comment-menu-dropdown {
+  position: absolute;
+  top: 2rem;
+  right: 0;
+  z-index: 10;
+  min-width: 5rem;
+  padding: 0.25rem 0;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+  box-shadow: 0 0.25rem 0.75rem rgb(0 0 0 / 15%);
+}
+
+.comment-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: #dc3545;
+  text-align: left;
+}
+
+.comment-menu-item:hover,
+.comment-menu-item:focus-visible {
+  background: #f8d7da;
 }
 
 .comment-content {

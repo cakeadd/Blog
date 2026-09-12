@@ -137,3 +137,15 @@ class CommentApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_comment_cannot_exceed_500_characters(self):
+        self.authenticate(self.author)
+
+        response = self.client.post(
+            f'/api/articles/{self.article.id}/comments/',
+            {'content': '字' * 501},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('评论内容不能超过500字', str(response.data))

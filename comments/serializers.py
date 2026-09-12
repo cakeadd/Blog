@@ -5,6 +5,10 @@ from .models import Comment
 
 class CommentSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
+    content = serializers.CharField(
+        max_length=500,
+        error_messages={'max_length': '评论内容不能超过500字。'},
+    )
 
     class Meta:
         model = Comment
@@ -17,4 +21,6 @@ class CommentSerializer(serializers.ModelSerializer):
     def validate_content(self, value):
         if not value.strip():
             raise serializers.ValidationError('评论内容不能为空。')
+        if len(value) > 500:
+            raise serializers.ValidationError('评论内容不能超过500字。')
         return value
