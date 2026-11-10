@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiFetch, getCurrentUser, parseApiResponse } from '../api'
+import { apiFetch, getCurrentUser, isGuestMode, parseApiResponse, showToast } from '../api'
 
 const router = useRouter()
 const articles = ref([])
@@ -16,6 +16,7 @@ const categoryKeyword = ref('')
 const categories = ref([])
 const likeStates = ref({})
 const currentUser = ref(getCurrentUser())
+const guest = ref(isGuestMode())
 
 async function loadArticles(page = 1) {
   loading.value = true
@@ -40,7 +41,6 @@ async function loadArticles(page = 1) {
 }
 
 async function loadLikeStates(items) {
-  if (currentUser.value?.role !== 'user') return
   await Promise.all(items.map(async (article) => {
     try {
       const response = await apiFetch(`/api/articles/${article.id}/like/`)
@@ -52,13 +52,18 @@ async function loadLikeStates(items) {
     } catch {
       likeStates.value = {
         ...likeStates.value,
-        [article.id]: { liked: false, count: 0, loading: false },
+          [article.id]: { liked: false, count: article.likes_count ?? 0, loading: false },
       }
     }
   }))
 }
 
 async function toggleLike(article) {
+  if (guest.value) {
+    showToast('游客模式下请先登录后再点赞。')
+    return
+  }
+  if (currentUser.value?.role !== 'user') return
   const existing = likeStates.value[article.id] || { liked: false, count: 0 }
   if (existing.loading) return
   likeStates.value = {
@@ -158,11 +163,12 @@ onMounted(() => {
               <h2 class="h4 card-title mb-2">{{ article.title }}</h2>
               <p class="card-text text-secondary mb-0">{{ article.summary || '暂无摘要' }}</p>
           </div>
-          <div v-if="currentUser?.role === 'user'" class="card-footer bg-white border-0 pt-0">
+          <div class="card-footer bg-white border-0 pt-0">
             <button
               class="btn btn-link text-decoration-none p-0 like-button"
               :class="{ liked: likeStates[article.id]?.liked }"
-              :disabled="likeStates[article.id]?.loading"
+              :disabled="guest || likeStates[article.id]?.loading"
+              :title="guest ? '登录后才能点赞' : '点赞或取消点赞'"
               @click.stop.prevent="toggleLike(article)"
             >
               <svg
@@ -178,7 +184,7 @@ onMounted(() => {
                 <path d="M7 10v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3Z" />
                 <path d="M7 20h9.4a2 2 0 0 0 1.9-1.4l2.1-6A2 2 0 0 0 18.5 10H15l.8-4.1A2.4 2.4 0 0 0 13.5 3L7 10v10Z" />
               </svg>
-              <span class="ms-2">{{ likeStates[article.id]?.count ?? 0 }}</span>
+              <span class="ms-2">{{ likeStates[article.id]?.count ?? article.likes_count ?? 0 }}</span>
             </button>
           </div>
         </article>

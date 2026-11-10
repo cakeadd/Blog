@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import { apiFetch, getCurrentUser, parseApiResponse } from '../api'
+import { apiFetch, getCurrentUser, isGuestMode, parseApiResponse, showToast } from '../api'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +11,7 @@ const article = ref(null)
 const loading = ref(true)
 const error = ref('')
 const currentUser = ref(getCurrentUser())
+const guest = ref(isGuestMode())
 const likeState = ref({ liked: false, count: 0, loading: false })
 const comments = ref([])
 const commentsLoading = ref(true)
@@ -37,7 +38,6 @@ function userPath(userId) {
 }
 
 async function loadLikeState() {
-  if (currentUser.value?.role !== 'user') return
   try {
     const response = await apiFetch(`/api/articles/${route.params.id}/like/`)
     const data = await parseApiResponse(response)
@@ -48,6 +48,10 @@ async function loadLikeState() {
 }
 
 async function toggleLike() {
+  if (guest.value) {
+    showToast('游客模式下请先登录后再点赞。')
+    return
+  }
   if (likeState.value.loading || currentUser.value?.role !== 'user') return
   const previous = { ...likeState.value }
   likeState.value = { ...previous, loading: true }
@@ -184,10 +188,11 @@ onBeforeUnmount(() => {
       <span v-if="article.updated_at">修改时间：{{ formatDate(article.updated_at) }}</span>
       <span>作者：<router-link :to="userPath(article.author)">{{ article.author_name }}</router-link></span>
       <button
-        v-if="currentUser?.role === 'user'"
+        v-if="currentUser?.role === 'user' || guest"
         class="btn btn-link text-secondary p-0 like-button"
         :class="{ liked: likeState.liked }"
-        :disabled="likeState.loading"
+        :disabled="guest || likeState.loading"
+        :title="guest ? '登录后才能点赞' : '点赞或取消点赞'"
         aria-label="点赞或取消点赞"
         @click="toggleLike"
       >
@@ -213,8 +218,10 @@ onBeforeUnmount(() => {
       <div class="comments-heading">
         <h2 class="h4 mb-0">评论</h2>
         <button
-          v-if="currentUser?.role === 'user'"
+          v-if="currentUser?.role === 'user' || guest"
           class="btn btn-primary"
+          :disabled="guest"
+          :title="guest ? '登录后才能发表评论' : ''"
           @click="openCommentModal"
         >
           发布评论

@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiFetch, parseApiResponse, setSession, showToast } from '../api'
+import { apiFetch, parseApiResponse, setGuestMode, setSession, showToast } from '../api'
 
 const router = useRouter()
 const route = useRoute()
@@ -35,6 +35,11 @@ async function submit() {
   } finally {
     loading.value = false
   }
+}
+
+function browseAsGuest() {
+  setGuestMode()
+  router.push('/')
 }
 </script>
 
@@ -70,6 +75,11 @@ async function submit() {
             </div>
             <div class="text-center mt-2">
               <a href="/admin/login">管理员登录</a>
+            </div>
+            <div class="text-center mt-2">
+              <button type="button" class="btn btn-link p-0" @click="browseAsGuest">
+                以游客身份浏览
+              </button>
             </div>
           </form>
         </div>

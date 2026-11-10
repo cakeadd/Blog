@@ -72,6 +72,16 @@ class ArticleLikeApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_guest_can_query_like_count_but_cannot_like(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['liked'])
+        self.assertEqual(response.data['likes_count'], 0)
+
+        post_response = self.client.post(self.url, {}, format='json')
+        self.assertEqual(post_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_user_can_like_article(self):
         self.authenticate()
 

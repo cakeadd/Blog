@@ -1,11 +1,12 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { apiFetch, parseApiResponse, setCurrentUser, showToast as globalShowToast } from '../api'
+import { apiFetch, isGuestMode, parseApiResponse, setCurrentUser, showToast as globalShowToast } from '../api'
 
 const router = useRouter()
 const route = useRoute()
 const profile = ref(null)
+const guest = ref(isGuestMode())
 const draft = ref({ username: '', email: '' })
 const activeSection = ref('profile')
 const editing = ref(false)
@@ -40,6 +41,10 @@ const avatarPreview = ref('')
 let toastTimer = null
 
 async function loadProfile() {
+  if (guest.value) {
+    loading.value = false
+    return
+  }
   loading.value = true
   error.value = ''
   try {
@@ -223,6 +228,7 @@ async function saveProfile() {
 function selectSection(section) {
   activeSection.value = section
   error.value = ''
+  if (guest.value) return
   if (section === 'articles') loadMyArticles()
   if (section === 'likes') loadMyLikes()
 }
@@ -309,6 +315,8 @@ onBeforeUnmount(() => {
       <button
         class="account-nav-item text-secondary"
         :class="{ active: activeSection === 'articles' }"
+        :disabled="guest"
+        :title="guest ? '登录后才能查看我的文章' : ''"
         @click="selectSection('articles')"
       >
         我的文章
@@ -316,6 +324,8 @@ onBeforeUnmount(() => {
       <button
         class="account-nav-item text-secondary"
         :class="{ active: activeSection === 'likes' }"
+        :disabled="guest"
+        :title="guest ? '登录后才能查看我的点赞' : ''"
         @click="selectSection('likes')"
       >
         我的点赞
@@ -323,7 +333,14 @@ onBeforeUnmount(() => {
     </aside>
 
     <section class="account-content">
-      <div v-if="loading" class="text-secondary">正在加载用户信息...</div>
+      <div v-if="guest" class="guest-panel border rounded p-5 text-center">
+        <i class="bi bi-person-circle guest-panel-icon" aria-hidden="true"></i>
+        <h2 class="h4 mt-3">当前为游客模式</h2>
+        <p class="text-secondary">登录后才能查看和管理个人文章、点赞及用户信息。</p>
+        <router-link class="btn btn-primary me-2" to="/login">登录</router-link>
+        <router-link class="btn btn-outline-primary" to="/register">注册</router-link>
+      </div>
+      <div v-else-if="loading" class="text-secondary">正在加载用户信息...</div>
       <div v-else-if="error && !profile" class="text-secondary">暂时无法加载用户信息。</div>
 
       <template v-else-if="activeSection === 'profile' && profile">
@@ -602,6 +619,15 @@ onBeforeUnmount(() => {
 
 .profile-card {
   background: #fff;
+}
+
+.guest-panel {
+  background: #fff;
+}
+
+.guest-panel-icon {
+  color: #6c757d;
+  font-size: 3rem;
 }
 
 .profile-row {

@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import 'bootstrap-icons/font/bootstrap-icons.css'
 
 import App from './App.vue'
 import HomeView from './views/HomeView.vue'
@@ -25,19 +26,23 @@ const router = createRouter({
     { path: '/admin/register', component: AdminRegisterView },
     { path: '/admin', component: AdminView, meta: { requiresAuth: true } },
     { path: '/', component: HomeView },
-    { path: '/articles/new', component: ArticleEditorView, meta: { requiresAuth: true } },
-    { path: '/categories/new', component: CategoryEditorView, meta: { requiresAuth: true } },
-    { path: '/articles/:id/edit', component: ArticleEditorView, meta: { requiresAuth: true } },
+    { path: '/articles/new', component: ArticleEditorView },
+    { path: '/categories/new', component: CategoryEditorView },
+    { path: '/articles/:id/edit', component: ArticleEditorView },
     { path: '/articles/:id', component: ArticleDetailView },
-    { path: '/account', component: AccountView, meta: { requiresAuth: true } },
-    { path: '/users/:id', component: UserProfileView, meta: { requiresAuth: true } },
+    { path: '/account', component: AccountView },
+    { path: '/users/:id', component: UserProfileView },
   ],
 })
 
 router.beforeEach((to) => {
   const accessToken = localStorage.getItem('access_token')
+  const guestMode = localStorage.getItem('guest_mode') === 'true'
   const publicPaths = ['/login', '/register', '/admin/login', '/admin/register']
-  if (!accessToken && !publicPaths.includes(to.path)) {
+  if (to.path === '/admin' && (!accessToken || guestMode)) {
+    return { path: '/admin/login', query: { next: to.fullPath } }
+  }
+  if (!accessToken && !guestMode && !publicPaths.includes(to.path)) {
     return { path: '/login', query: { next: to.fullPath } }
   }
   if (publicPaths.includes(to.path) && accessToken) {

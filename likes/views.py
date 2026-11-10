@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -27,14 +28,21 @@ class MyLikeListView(APIView):
 
 
 class ArticleLikeView(APIView):
-    permission_classes = [IsNormalUser]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsNormalUser()]
 
     def get_article(self, article_id):
         return get_object_or_404(Article, pk=article_id, is_deleted=False)
 
     def get(self, request, article_id):
         article = self.get_article(article_id)
-        liked = Like.objects.filter(article=article, user=request.user).exists()
+        liked = (
+            request.user.is_authenticated
+            and request.user.role == request.user.Role.USER
+            and Like.objects.filter(article=article, user=request.user).exists()
+        )
         return Response({
             'liked': liked,
             'likes_count': Like.objects.filter(article=article).count(),

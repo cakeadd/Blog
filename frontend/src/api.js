@@ -41,6 +41,10 @@ export function getAccessToken() {
   return localStorage.getItem('access_token')
 }
 
+export function isGuestMode() {
+  return localStorage.getItem('guest_mode') === 'true'
+}
+
 export function getCurrentUser() {
   const raw = localStorage.getItem('current_user')
   return raw ? JSON.parse(raw) : null
@@ -52,6 +56,7 @@ export function setCurrentUser(user) {
 }
 
 export function setSession(data, user = null) {
+  localStorage.removeItem('guest_mode')
   localStorage.setItem('access_token', data.access)
   localStorage.setItem('refresh_token', data.refresh)
   if (user) localStorage.setItem('current_user', JSON.stringify(user))
@@ -61,6 +66,14 @@ export function clearSession() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('current_user')
+  localStorage.removeItem('guest_mode')
+  window.dispatchEvent(new CustomEvent('blog-auth-updated'))
+}
+
+export function setGuestMode() {
+  clearSession()
+  localStorage.setItem('guest_mode', 'true')
+  window.dispatchEvent(new CustomEvent('blog-auth-updated'))
 }
 
 async function refreshAccessToken() {
@@ -107,6 +120,11 @@ export async function parseApiResponse(response) {
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     const rawMessage = data.detail || Object.values(data).flat().join(' ') || '请求失败'
+    if (response.status === 401 && isGuestMode()) {
+      const message = '游客模式下请先登录后再使用此功能。'
+      showToast(message)
+      throw new Error(message)
+    }
     const message = friendlyMessage(rawMessage)
     showToast(message)
     throw new Error(message)

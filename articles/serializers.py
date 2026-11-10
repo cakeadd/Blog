@@ -25,6 +25,7 @@ class CategorySerializer(serializers.ModelSerializer):
 class ArticleSerializer(serializers.ModelSerializer):
     content = serializers.JSONField(required=True)
     author_name = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
     summary = serializers.CharField(required=False, allow_blank=True, max_length=45)
 
     class Meta:
@@ -39,11 +40,15 @@ class ArticleSerializer(serializers.ModelSerializer):
             'category',
             'created_at',
             'updated_at',
+            'likes_count',
         )
         read_only_fields = ('id', 'author', 'created_at', 'updated_at')
 
     def get_author_name(self, obj):
         return obj.author.username if obj.author.is_active else '已停用用户'
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
 
     def validate_title(self, value):
         value = value.strip()
